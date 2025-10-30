@@ -40,11 +40,11 @@ This repository includes smart contracts, frontend, and backend logic for the **
 
 ## Deploy the contract
 
-forge verify-contract \
-  --chain base-sepolia \
-  --compiler-version v0.8.20+commit.a1b79de6 \
-  0x5a3a45160494A2cf01dF35683380f17B33D73E35 \
-  ./contracts/src/BlackhornReader.sol:BlackhornReader
+source .env
+forge script script/Deploy.s.sol:Deploy \
+  --rpc-url $BASE_SEPOLIA_RPC \
+  --private-key $PRIVATE_KEY \
+  --broadcast -vv 
 
 ---
 
@@ -58,7 +58,7 @@ forge verify-contract \
 
 ---
 
-💡 Vision
+💡 **Vision**
 
 Blackhorn Reader reimagines digital publishing as an interactive, ownable reading experience powered by blockchain.
 Readers can lend, review, and burn tokenized stories — creating a decentralized library built by its readers.
