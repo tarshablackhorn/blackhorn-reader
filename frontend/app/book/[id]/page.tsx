@@ -2,48 +2,26 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { CONTRACT_ADDRESS, CONTRACT_ABI, BOOK_ID, basicBadgeId } from '@/lib/contract';
-import { useState } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
+import { useBookData } from '@/hooks/useBookData';
+import { getBookById } from '@/types/book';
+import { useState, useEffect } from 'react';
 import { keccak256, toHex } from 'viem';
+import { toast } from 'sonner';
+import { handleTransactionError, handleApiError } from '@/lib/errors';
+import { useReviews } from '@/hooks/useReviews';
 
-export default function BookDetailPage() {
-  const { address, isConnected } = useAccount();
+export default function BookDetailPage({ params }: { params: { id: string } }) {
+  const { isConnected, address } = useAccount();
   const [review, setReview] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(false);
-
-  // Read user's claim status
-  const { data: claimStatus } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'claimOf',
-    args: [BOOK_ID, address as `0x${string}`],
-    query: {
-      enabled: isConnected && !!address,
-    },
-  });
-
-  // Read if user has the book
-  const { data: bookBalance } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'balanceOf',
-    args: [address as `0x${string}`, BOOK_ID],
-    query: {
-      enabled: isConnected && !!address,
-    },
-  });
-
-  // Read borrowed until timestamp
-  const { data: borrowedUntil } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'borrowedUntil',
-    args: [BOOK_ID, address as `0x${string}`],
-    query: {
-      enabled: isConnected && !!address,
-    },
-  });
+  const [rating, setRating] = useState(5);
+  
+  const bookId = BigInt(params.id);
+  const book = getBookById(bookId);
+  const { ownsBook, isBorrowed, canReview, hasBasicBadge, hasRareBadge, claimStatus } = useBookData(bookId);
+  const { reviews, isLoading: reviewsLoading } = useReviews(Number(bookId));
 
   const { writeContract: writeReview, data: reviewHash, isPending: isReviewPending } = useWriteContract();
   const { writeContract: writeBurn, data: burnHash, isPending: isBurnPending } = useWriteContract();
@@ -51,35 +29,81 @@ export default function BookDetailPage() {
   const { isLoading: isReviewConfirming } = useWaitForTransactionReceipt({ hash: reviewHash });
   const { isLoading: isBurnConfirming } = useWaitForTransactionReceipt({ hash: burnHash });
 
-  const hasBook = bookBalance && Number(bookBalance) > 0;
-  const hasBorrowAccess = borrowedUntil && Number(borrowedUntil) > Date.now() / 1000;
-  const hasAccess = hasBook || hasBorrowAccess;
-  const hasNotClaimed = Number(claimStatus) === 0; // Claim.None
-  const hasBasicBadge = Number(claimStatus) === 1; // Claim.Basic
-  const hasRareBadge = Number(claimStatus) === 2; // Claim.Rare
+  const hasAccess = ownsBook || isBorrowed;
+  const hasNotClaimed = claimStatus === 0;
 
   const handleSubmitReview = async () => {
-    if (!review.trim()) return;
+    if (!review.trim() || !address) return;
     
     // Hash the review content
     const reviewHash = keccak256(toHex(review));
     
-    writeReview({
-      address: CONTRACT_ADDRESS,
-      abi: CONTRACT_ABI,
-      functionName: 'reviewAndClaimBasic',
-      args: [BOOK_ID, reviewHash],
-    });
+    // Submit to blockchain
+    try {
+      await writeReview({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'reviewAndClaimBasic',
+        args: [bookId, reviewHash],
+      });
+      toast.loading('Submitting review and claiming badge...');
+    } catch (error) {
+      handleTransactionError(error);
+      return;
+    }
+
+    // Submit to backend API
+    try {
+      const response = await fetch('http://localhost:3001/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookId: Number(bookId),
+          userAddress: address,
+          reviewText: review,
+          rating,
+          reviewHash,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save review');
+      }
+      
+      toast.success('Review saved to database');
+    } catch (error) {
+      handleApiError(error, 'Failed to save review to database');
+    }
   };
 
   const handleBurnForRare = async () => {
-    writeBurn({
-      address: CONTRACT_ADDRESS,
-      abi: CONTRACT_ABI,
-      functionName: 'burnForRare',
-      args: [BOOK_ID],
-    });
+    try {
+      await writeBurn({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'burnForRare',
+        args: [bookId],
+      });
+      toast.loading('Burning book for rare badge...');
+    } catch (error) {
+      handleTransactionError(error);
+    }
   };
+
+  useEffect(() => {
+    if (isReviewConfirming) {
+      toast.success('Basic Badge claimed! 🎉');
+      setShowReviewForm(false);
+      setReview('');
+    }
+  }, [isReviewConfirming]);
+
+  useEffect(() => {
+    if (isBurnConfirming) {
+      toast.success('Rare Badge upgraded! 💎');
+    }
+  }, [isBurnConfirming]);
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -120,17 +144,25 @@ export default function BookDetailPage() {
                 <span className="text-9xl">📖</span>
               </div>
               <div className="p-6">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">Book #1</h2>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">{book?.title || `Book #${bookId}`}</h2>
                 <p className="text-gray-600 mb-4">
-                  This is a placeholder description. Book metadata will be provided by the backend API.
+                  {book?.description || 'Book description not available.'}
                 </p>
+                {book?.author && (
+                  <p className="text-sm text-gray-500 mb-2">by {book.author}</p>
+                )}
+                {book?.genre && (
+                  <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded mb-4">
+                    {book.genre}
+                  </span>
+                )}
                 <div className="flex flex-wrap gap-2">
-                  {hasBook && (
+                  {ownsBook && (
                     <span className="inline-block bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">
                       You Own This
                     </span>
                   )}
-                  {hasBorrowAccess && (
+                  {isBorrowed && (
                     <span className="inline-block bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">
                       Currently Borrowed
                     </span>
@@ -178,6 +210,23 @@ export default function BookDetailPage() {
                       </>
                     ) : (
                       <>
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Rating
+                          </label>
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => setRating(star)}
+                                className="text-2xl transition-transform hover:scale-110"
+                              >
+                                {star <= rating ? '⭐' : '☆'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         <textarea
                           value={review}
                           onChange={(e) => setReview(e.target.value)}
@@ -205,7 +254,7 @@ export default function BookDetailPage() {
                 )}
 
                 {/* Burn for Rare Badge */}
-                {hasBook && !hasRareBadge && (
+                {ownsBook && !hasRareBadge && (
                   <div className="bg-white rounded-lg shadow-md p-6 border-2 border-yellow-400">
                     <h3 className="text-xl font-bold text-gray-900 mb-4">🔥 Burn for Rare Badge</h3>
                     <p className="text-gray-600 mb-4">
@@ -252,6 +301,60 @@ export default function BookDetailPage() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Reader Reviews</h2>
+          
+          {reviewsLoading && (
+            <div className="text-center py-8">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading reviews...</p>
+            </div>
+          )}
+
+          {!reviewsLoading && reviews.length === 0 && (
+            <div className="bg-gray-50 rounded-lg p-8 text-center">
+              <p className="text-gray-600">No reviews yet. Be the first to review this book!</p>
+            </div>
+          )}
+
+          {!reviewsLoading && reviews.length > 0 && (
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-xl">
+                      👤
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {review.userAddress.slice(0, 6)}...{review.userAddress.slice(-4)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(review.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {review.rating > 0 && (
+                          <div className="flex gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <span key={i} className="text-base">
+                                {i < review.rating ? '⭐' : '☆'}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-gray-700 whitespace-pre-wrap">{review.reviewText}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

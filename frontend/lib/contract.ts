@@ -1,8 +1,9 @@
 import { Address } from 'viem';
 import abi from './abi.json';
 
-// TODO: Replace with your actual deployed contract address
-export const CONTRACT_ADDRESS: Address = '0x0000000000000000000000000000000000000000';
+export const CONTRACT_ADDRESS: Address = 
+  (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as Address) || 
+  '0x0000000000000000000000000000000000000000';
 
 export const CONTRACT_ABI = abi as const;
 

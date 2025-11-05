@@ -113,10 +113,78 @@ pnpm dev
 The `BlackhornReader` contract implements:
 
 - **ERC1155 Multi-Token**: Books and reward badges
+- **Book Purchases**: Purchase books with crypto (ETH) directly on-chain
+- **Flexible Pricing**: Owner can set custom prices for each book
 - **Lending System**: Lend books to other wallets with time limits
 - **Review Rewards**: Claim BASIC badges (soulbound) for leaving reviews
 - **Rare Badge Upgrade**: Burn your book to upgrade to RARE badge
 - **Transfer Rules**: Prevents transfers during active lending, BASIC badges are soulbound
+
+---
+
+## 🛒 Purchasing Books
+
+### Smart Contract
+
+Users can purchase books directly using the `purchaseBook` function:
+
+```solidity
+// Purchase a book by paying the set price
+function purchaseBook(uint256 bookId) external payable
+```
+
+**Features:**
+- Automatically mints the book NFT to the buyer
+- Transfers payment to the contract owner
+- Emits `BookPurchased` event for tracking
+- Default price: 0.001 ETH (customizable by owner)
+
+**Owner Functions:**
+```solidity
+// Set or update book price
+function setBookPrice(uint256 bookId, uint256 price) external onlyOwner
+
+// View current price
+function bookPrices(uint256 bookId) public view returns (uint256)
+```
+
+### Backend API
+
+The backend tracks all purchases via `/api/purchases`:
+
+**Endpoints:**
+- `GET /api/purchases` - Get all purchases
+- `GET /api/purchases/book/:bookId` - Get purchases for a specific book
+- `GET /api/purchases/user/:address` - Get purchases by a specific user
+- `POST /api/purchases` - Record a new purchase (called automatically by frontend)
+- `GET /api/purchases/stats` - Get purchase statistics
+
+**Example Response:**
+```json
+{
+  "id": "0xabc...123-1234567890",
+  "bookId": 1,
+  "buyerAddress": "0x123...",
+  "amount": "1000000000000000",
+  "txHash": "0xabc...123",
+  "timestamp": "2025-11-05T18:30:00.000Z",
+  "book": {
+    "id": 1,
+    "title": "Sample Book",
+    "author": "Author Name"
+  }
+}
+```
+
+### Frontend
+
+The `BookCard` component displays:
+- Book price in ETH
+- Purchase button (when not owned)
+- Transaction status with loading states
+- Success notifications
+
+Users who don't own a book will see the purchase option with real-time pricing from the blockchain.
 
 ---
 

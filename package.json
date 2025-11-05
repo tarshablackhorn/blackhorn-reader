@@ -1,13 +1,24 @@
 {
   "name": "blackhorn-reader",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Blackhorn Reader - Decentralized book sharing platform",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "pnpm --parallel --stream -r dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "build": "pnpm -r build",
+    "build:frontend": "pnpm --filter frontend build",
+    "build:backend": "pnpm --filter backend build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r exec rm -rf node_modules dist .next"
   },
-  "keywords": [],
+  "keywords": ["blockchain", "web3", "book-sharing"],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.20.0"
+  "packageManager": "pnpm@10.20.0",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }

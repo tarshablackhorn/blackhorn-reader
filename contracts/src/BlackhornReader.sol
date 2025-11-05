@@ -10,15 +10,21 @@ contract BlackhornReader is ERC1155, Ownable {
     error NotLent();
     error LendingActive();
     error Soulbound(); // BASIC badges cannot transfer
+    error InvalidPrice();
+    error InsufficientPayment();
 
     event Lent(address indexed lender, address indexed borrower, uint256 indexed id, uint64 dueAt);
     event Returned(address indexed lender, uint256 indexed id);
     event Recalled(address indexed lender, uint256 indexed id);
     event Reviewed(address indexed user, uint256 indexed id, bytes32 reviewHash);
     event BurnedForRare(address indexed user, uint256 indexed id);
+    event BookPurchased(address indexed buyer, uint256 indexed bookId, uint256 price);
 
     // --- Single book v1 (extend to multiple later) ---
     uint256 public constant BOOK = 1;
+
+    // Book pricing: bookId => price in wei
+    mapping(uint256 => uint256) public bookPrices;
 
     // Reward badge id spaces (per-book)
     uint256 constant BASIC_BADGE_BASE = 1_000_000;
@@ -39,6 +45,33 @@ contract BlackhornReader is ERC1155, Ownable {
     constructor(string memory uri) ERC1155(uri) Ownable(msg.sender) {
         // Mint 1 book to owner (you)
         _mint(msg.sender, BOOK, 1, "");
+        // Set default price for BOOK (0.001 ETH)
+        bookPrices[BOOK] = 0.001 ether;
+    }
+
+    // ---------- Purchase ----------
+    /// @notice Purchase a book with crypto
+    /// @param bookId The ID of the book to purchase
+    function purchaseBook(uint256 bookId) external payable {
+        uint256 price = bookPrices[bookId];
+        if (price == 0) revert InvalidPrice();
+        if (msg.value < price) revert InsufficientPayment();
+
+        // Mint book to buyer
+        _mint(msg.sender, bookId, 1, "");
+
+        // Transfer payment to contract owner
+        (bool success, ) = owner().call{value: msg.value}("");
+        require(success, "Payment transfer failed");
+
+        emit BookPurchased(msg.sender, bookId, msg.value);
+    }
+
+    /// @notice Set the price for a book (owner only)
+    /// @param bookId The book ID
+    /// @param price The price in wei
+    function setBookPrice(uint256 bookId, uint256 price) external onlyOwner {
+        bookPrices[bookId] = price;
     }
 
     // ---------- Lending ----------

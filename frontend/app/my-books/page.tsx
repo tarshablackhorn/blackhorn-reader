@@ -2,25 +2,84 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
-import { useAccount, useReadContract } from 'wagmi';
-import { CONTRACT_ADDRESS, CONTRACT_ABI, BOOK_ID } from '@/lib/contract';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useBookData } from '@/hooks/useBookData';
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
+import { getAllBooks, getBookById } from '@/types/book';
+
+function BorrowedBookCard({ bookId }: { bookId: bigint }) {
+  const { isBorrowed, borrowedUntil, canReview } = useBookData(bookId);
+  const { writeContract, data: hash, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const book = getBookById(bookId);
+
+  const handleReturn = () => {
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'returnEarly',
+      args: [bookId],
+    });
+  };
+
+  const dueDate = borrowedUntil ? new Date(Number(borrowedUntil) * 1000) : null;
+  const isOverdue = borrowedUntil && borrowedUntil < BigInt(Math.floor(Date.now() / 1000));
+
+  if (!isBorrowed) return null;
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+        <span className="text-6xl">📖</span>
+      </div>
+      <div className="p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{book?.title || `Book #${bookId}`}</h3>
+        <div className="mb-4">
+          <span className={`inline-block text-sm px-3 py-1 rounded-full ${
+            isOverdue ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+          }`}>
+            {isOverdue ? '⚠️ Overdue' : '✓ Active Borrow'}
+          </span>
+        </div>
+        {dueDate && (
+          <p className="text-gray-600 mb-4">
+            Due: {dueDate.toLocaleDateString()} at {dueDate.toLocaleTimeString()}
+          </p>
+        )}
+        <div className="space-y-2">
+          <Link 
+            href={`/book/${bookId}`}
+            className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {canReview ? 'Read & Review' : 'View Details'}
+          </Link>
+          <button
+            onClick={handleReturn}
+            disabled={isPending || isConfirming}
+            className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:bg-gray-400"
+          >
+            {isPending || isConfirming ? 'Returning...' : 'Return Early'}
+          </button>
+          {isSuccess && (
+            <p className="text-green-600 text-sm">Successfully returned!</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MyBooksPage() {
-  const { address, isConnected } = useAccount();
-
-  // Read borrowed until timestamp for the user
-  const { data: borrowedUntil } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'borrowedUntil',
-    args: [BOOK_ID, address as `0x${string}`],
-    query: {
-      enabled: isConnected && !!address,
-    },
+  const { isConnected } = useAccount();
+  const allBooks = getAllBooks();
+  
+  // Check if user has any borrowed books
+  const borrowedBookIds = allBooks.map(book => book.id).filter(bookId => {
+    const { isBorrowed } = useBookData(bookId);
+    return isBorrowed;
   });
 
-  const hasBorrowedBook = borrowedUntil && Number(borrowedUntil) > Date.now() / 1000;
-  const dueDate = borrowedUntil ? new Date(Number(borrowedUntil) * 1000) : null;
+  const hasAnyBorrowedBooks = borrowedBookIds.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -63,7 +122,7 @@ export default function MyBooksPage() {
             <p className="text-gray-600 mb-4">Please connect your wallet to view your borrowed books</p>
             <ConnectButton />
           </div>
-        ) : !hasBorrowedBook ? (
+        ) : !hasAnyBorrowedBooks ? (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <div className="text-6xl mb-4">📚</div>
             <p className="text-gray-600">You don't have any books borrowed at the moment</p>
@@ -76,32 +135,9 @@ export default function MyBooksPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <span className="text-6xl">📖</span>
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Book #1</h3>
-                <div className="mb-4">
-                  <span className="inline-block bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">
-                    Active Borrow
-                  </span>
-                </div>
-                {dueDate && (
-                  <p className="text-gray-600 mb-4">
-                    Due: {dueDate.toLocaleDateString()} at {dueDate.toLocaleTimeString()}
-                  </p>
-                )}
-                <div className="space-y-2">
-                  <Link 
-                    href="/book/1"
-                    className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    View Details
-                  </Link>
-                </div>
-              </div>
-            </div>
+            {allBooks.map(book => (
+              <BorrowedBookCard key={book.id.toString()} bookId={book.id} />
+            ))}
           </div>
         )}
       </main>

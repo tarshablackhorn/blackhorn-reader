@@ -41,6 +41,25 @@ Note: As the project is newly initialized, specific build/test/lint commands wil
 - Development commands will be added as the project evolves
 - Likely patterns: `pnpm dev` for local development, `pnpm build` for production builds
 
+#### Running Development Servers
+From the project root (`~/blackhorn-reader`):
+```bash
+# Terminal 1 - Backend
+cd backend && pnpm dev
+
+# Terminal 2 - Frontend
+cd frontend && pnpm dev
+```
+
+From the contracts directory:
+```bash
+# Terminal 1 - Backend
+cd ../backend && pnpm dev
+
+# Terminal 2 - Frontend
+cd ../frontend && pnpm dev
+```
+
 ## Future Considerations
 
 As this codebase grows, update this file with:

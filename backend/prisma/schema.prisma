@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Book {
+  id            Int             @id @default(autoincrement())
+  title         String
+  description   String
+  author        String
+  genre         String
+  publishedYear Int
+  coverImage    String?
+  ownerAddress  String?         // Wallet address of book owner
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  reviews        Review[]
+  borrowRequests BorrowRequest[]
+  purchases      Purchase[]
+}
+
+model Review {
+  id          String   @id
+  bookId      Int
+  userAddress String
+  reviewText  String
+  rating      Int      @default(0)
+  reviewHash  String   // Hash stored on blockchain
+  timestamp   DateTime @default(now())
+  
+  book        Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  
+  @@unique([bookId, userAddress])
+  @@index([bookId])
+  @@index([userAddress])
+}
+
+model BorrowRequest {
+  id              String   @id
+  bookId          Int
+  borrowerAddress String
+  durationDays    Int
+  status          String   @default("pending") // pending, approved, rejected
+  txHash          String?  // Transaction hash once approved on-chain
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  book            Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  
+  @@index([bookId])
+  @@index([borrowerAddress])
+  @@index([status])
+}
+
+model Purchase {
+  id           String   @id
+  bookId       Int
+  buyerAddress String
+  amount       String   // Amount in wei (stored as string for precision)
+  txHash       String   @unique
+  timestamp    DateTime @default(now())
+  
+  book         Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  
+  @@index([bookId])
+  @@index([buyerAddress])
+  @@index([txHash])
+}

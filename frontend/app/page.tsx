@@ -2,8 +2,28 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
+import { BookCard } from '@/components/BookCard';
+import { useEffect, useState } from 'react';
+import { fetchBooks, type Book } from '@/lib/api';
 
 export default function Home() {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const data = await fetchBooks();
+        setBooks(data);
+      } catch (error) {
+        console.error('Failed to load books:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBooks();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -29,6 +49,12 @@ export default function Home() {
             <Link href="/collection" className="text-gray-600 hover:text-gray-900 pb-2">
               My Collection
             </Link>
+            <Link href="/reviews" className="text-gray-600 hover:text-gray-900 pb-2">
+              Reviews
+            </Link>
+            <Link href="/stats" className="text-gray-600 hover:text-gray-900 pb-2">
+              Stats
+            </Link>
           </div>
         </div>
       </nav>
@@ -41,28 +67,27 @@ export default function Home() {
         </div>
 
         {/* Book Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Book Card - Currently hardcoded, will be dynamic with backend */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <span className="text-6xl">📖</span>
-            </div>
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Book #1</h3>
-              <p className="text-gray-600 mb-4">
-                Connect your wallet to view book details and request to borrow.
-              </p>
-              <div className="space-y-2">
-                <Link 
-                  href="/book/1"
-                  className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  View Details
-                </Link>
-              </div>
-            </div>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+            <p className="mt-4 text-gray-600">Loading books...</p>
           </div>
-        </div>
+        ) : books.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg">
+            <p className="text-gray-600">No books available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {books.map((book) => (
+              <BookCard
+                key={book.id.toString()}
+                bookId={BigInt(book.id)}
+                title={book.title}
+                description={book.description}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Info Section */}
         <div className="mt-12 bg-blue-50 rounded-lg p-6">
