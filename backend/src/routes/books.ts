@@ -4,7 +4,7 @@ import { prisma } from '../db';
 const router = Router();
 
 // GET /api/books - Get all books
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const books = await prisma.book.findMany({
       orderBy: { createdAt: 'desc' },

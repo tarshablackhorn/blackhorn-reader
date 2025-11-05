@@ -23,7 +23,7 @@ function BorrowedBookCard({ bookId }: { bookId: bigint }) {
   };
 
   const dueDate = borrowedUntil ? new Date(Number(borrowedUntil) * 1000) : null;
-  const isOverdue = borrowedUntil && borrowedUntil < BigInt(Math.floor(Date.now() / 1000));
+  const isOverdue = borrowedUntil && (borrowedUntil as bigint) < BigInt(Math.floor(Date.now() / 1000));
 
   if (!isBorrowed) return null;
 

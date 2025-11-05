@@ -63,7 +63,7 @@ describe('Borrow Requests API', () => {
 
       (prisma.borrowRequest.findMany as jest.Mock).mockResolvedValue(mockRequests);
 
-      const result = await prisma.borrowRequest.findMany({
+      await prisma.borrowRequest.findMany({
         where: { bookId },
         orderBy: { createdAt: 'desc' },
       });

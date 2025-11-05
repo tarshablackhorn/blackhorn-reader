@@ -5,7 +5,7 @@ export const CONTRACT_ADDRESS: Address =
   (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as Address) || 
   '0x0000000000000000000000000000000000000000';
 
-export const CONTRACT_ABI = abi as const;
+export const CONTRACT_ABI = abi;
 
 // Constants from the contract
 export const BOOK_ID = 1n;

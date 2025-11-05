@@ -58,7 +58,7 @@ export function BookCard({ bookId, title, description }: BookCardProps) {
     setIsPurchasing(true);
     
     try {
-      const txHash = await writeContract({
+      writeContract({
         address: CONTRACT_ADDRESS,
         abi: CONTRACT_ABI,
         functionName: 'purchaseBook',
@@ -67,23 +67,8 @@ export function BookCard({ bookId, title, description }: BookCardProps) {
       });
       
       toast.loading('Purchasing book...');
-      
-      // Record purchase in backend
-      if (txHash) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/purchases`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            bookId: Number(bookId),
-            buyerAddress: address,
-            amount: bookPrice.toString(),
-            txHash,
-          }),
-        });
-      }
     } catch (error) {
       handleTransactionError(error);
-    } finally {
       setIsPurchasing(false);
     }
   };
@@ -139,11 +124,11 @@ export function BookCard({ bookId, title, description }: BookCardProps) {
           </div>
         )}
 
-        {isConnected && isBorrowed && borrowedUntil && (
+        {isConnected && isBorrowed && typeof borrowedUntil === 'bigint' && (
           <div className="space-y-2">
             <p className="text-green-600 font-medium">✓ Currently Borrowed</p>
             <p className="text-sm text-gray-600">
-              Due: {formatDate(borrowedUntil)}
+              Due: {formatDate(borrowedUntil as bigint)}
             </p>
             <Link
               href={`/book/${bookId}`}
@@ -154,7 +139,7 @@ export function BookCard({ bookId, title, description }: BookCardProps) {
           </div>
         )}
 
-        {isConnected && !ownsBook && bookPrice && (
+        {isConnected && !ownsBook && typeof bookPrice === 'bigint' && (
           <div className="space-y-3">
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">

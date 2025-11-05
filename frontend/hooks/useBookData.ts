@@ -46,10 +46,10 @@ export function useBookData(bookId: bigint = BOOK_ID) {
     args: address ? [address, rareBadgeId(bookId)] : undefined,
   });
 
-  const ownsBook = bookBalance !== undefined && bookBalance > 0n;
-  const isBorrowed = borrowedUntil !== undefined && borrowedUntil > BigInt(Math.floor(Date.now() / 1000));
-  const hasBasicBadge = basicBadgeBalance !== undefined && basicBadgeBalance > 0n;
-  const hasRareBadge = rareBadgeBalance !== undefined && rareBadgeBalance > 0n;
+  const ownsBook = bookBalance !== undefined && bookBalance !== null && (bookBalance as bigint) > 0n;
+  const isBorrowed = borrowedUntil !== undefined && borrowedUntil !== null && (borrowedUntil as bigint) > BigInt(Math.floor(Date.now() / 1000));
+  const hasBasicBadge = basicBadgeBalance !== undefined && basicBadgeBalance !== null && (basicBadgeBalance as bigint) > 0n;
+  const hasRareBadge = rareBadgeBalance !== undefined && rareBadgeBalance !== null && (rareBadgeBalance as bigint) > 0n;
   const canReview = isBorrowed && claimStatus === 0;
 
   return {

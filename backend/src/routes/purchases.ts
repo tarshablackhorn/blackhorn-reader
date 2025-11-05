@@ -4,7 +4,7 @@ import { prisma } from '../db';
 const router = Router();
 
 // GET /api/purchases - Get all purchases
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const purchases = await prisma.purchase.findMany({
       include: {
@@ -94,7 +94,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/purchases/stats - Get purchase statistics
-router.get('/stats', async (req, res) => {
+router.get('/stats', async (_req, res) => {
   try {
     const totalPurchases = await prisma.purchase.count();
     const uniqueBuyers = await prisma.purchase.groupBy({

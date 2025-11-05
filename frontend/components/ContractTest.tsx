@@ -55,7 +55,7 @@ export function ContractTest() {
             <h3 className="font-semibold mb-2">balanceOf(address, BOOK_ID)</h3>
             {balanceLoading && <p className="text-sm">Loading...</p>}
             {balanceError && <p className="text-red-500 text-sm">Error reading balance</p>}
-            {balance !== undefined && (
+            {balance !== undefined && balance !== null && (
               <p className="font-mono">Balance: {balance.toString()}</p>
             )}
           </div>
@@ -64,7 +64,7 @@ export function ContractTest() {
             <h3 className="font-semibold mb-2">borrowedUntil(BOOK_ID, address)</h3>
             {borrowedLoading && <p className="text-sm">Loading...</p>}
             {borrowedError && <p className="text-red-500 text-sm">Error reading borrow status</p>}
-            {borrowedUntil !== undefined && (
+            {borrowedUntil !== undefined && borrowedUntil !== null && (
               <p className="font-mono">Borrowed Until: {borrowedUntil.toString()}</p>
             )}
           </div>
@@ -73,7 +73,7 @@ export function ContractTest() {
             <h3 className="font-semibold mb-2">claimOf(BOOK_ID, address)</h3>
             {claimLoading && <p className="text-sm">Loading...</p>}
             {claimError && <p className="text-red-500 text-sm">Error reading claim</p>}
-            {claim !== undefined && (
+            {claim !== undefined && claim !== null && (
               <p className="font-mono">Claim Status: {claim.toString()}</p>
             )}
           </div>

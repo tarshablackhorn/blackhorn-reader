@@ -20,7 +20,7 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
   
   const bookId = BigInt(params.id);
   const book = getBookById(bookId);
-  const { ownsBook, isBorrowed, canReview, hasBasicBadge, hasRareBadge, claimStatus } = useBookData(bookId);
+  const { ownsBook, isBorrowed, hasBasicBadge, hasRareBadge, claimStatus } = useBookData(bookId);
   const { reviews, isLoading: reviewsLoading } = useReviews(Number(bookId));
 
   const { writeContract: writeReview, data: reviewHash, isPending: isReviewPending } = useWriteContract();
