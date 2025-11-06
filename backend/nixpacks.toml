@@ -2,10 +2,10 @@
 nixPkgs = ['nodejs', 'pnpm']
 
 [phases.install]
-cmds = ['pnpm install --no-frozen-lockfile']
+cmds = ['pnpm install']
 
 [phases.build]
 cmds = ['pnpm prisma generate', 'pnpm build']
 
 [start]
-cmd = 'pnpm start'
+cmd = 'node dist/index.js'
