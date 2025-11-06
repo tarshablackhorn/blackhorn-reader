@@ -12,7 +12,7 @@ interface Review {
   timestamp: string;
 }
 
-export function useReviews(bookId?: number) {
+export function useReviews(bookId?: number, userAddress?: string) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,9 +21,15 @@ export function useReviews(bookId?: number) {
     async function fetchReviews() {
       try {
         setIsLoading(true);
-        const url = bookId 
-          ? `http://localhost:3001/api/reviews/${bookId}`
-          : 'http://localhost:3001/api/reviews';
+        let url: string;
+        
+        if (bookId) {
+          url = `http://localhost:3001/api/reviews/${bookId}`;
+        } else if (userAddress) {
+          url = `http://localhost:3001/api/reviews?userAddress=${userAddress}`;
+        } else {
+          url = 'http://localhost:3001/api/reviews';
+        }
         
         const response = await fetch(url);
         if (!response.ok) {
@@ -42,7 +48,7 @@ export function useReviews(bookId?: number) {
     }
 
     fetchReviews();
-  }, [bookId]);
+  }, [bookId, userAddress]);
 
   return { reviews, isLoading, error };
 }

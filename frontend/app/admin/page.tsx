@@ -8,7 +8,7 @@ import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import { fetchBorrowRequests, updateBorrowRequest, fetchBooks, type BorrowRequest, type Book } from '@/lib/api';
 import { toast } from 'sonner';
 import { handleTransactionError } from '@/lib/errors';
-import { parseEther, formatEther } from 'viem';
+import { parseEther } from 'viem';
 
 export default function AdminPage() {
   const { address } = useAccount();

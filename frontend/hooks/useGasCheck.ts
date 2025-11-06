@@ -1,6 +1,6 @@
 'use client';
 
-import { useAccount, useBalance, useEstimateGas } from 'wagmi';
+import { useAccount, useBalance } from 'wagmi';
 import { parseEther } from 'viem';
 import { toast } from 'sonner';
 
