@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["nodejs_18", "pnpm-9_x", "openssl"]
+
+[phases.install]
+cmds = [
+  "npm install -g corepack@0.24.1 && corepack enable",
+  "cd .. && pnpm i --frozen-lockfile && cd backend"
+]
+
+[phases.build]
+cmds = ["pnpm install && pnpm run build && npx prisma migrate deploy"]
+
+[start]
+cmd = "pnpm start"
