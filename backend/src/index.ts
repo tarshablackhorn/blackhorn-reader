@@ -5,6 +5,7 @@ import booksRouter from './routes/books';
 import reviewsRouter from './routes/reviews';
 import borrowRequestsRouter from './routes/borrow-requests';
 import purchasesRouter from './routes/purchases';
+import uploadRouter from './routes/upload';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use('/api/books', booksRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/borrow-requests', borrowRequestsRouter);
 app.use('/api/purchases', purchasesRouter);
+app.use('/api/upload', uploadRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

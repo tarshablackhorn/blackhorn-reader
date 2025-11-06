@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import { useBookData } from '@/hooks/useBookData';
+import { useGasCheck } from '@/hooks/useGasCheck';
 import { getBookById } from '@/types/book';
 import { useState, useEffect } from 'react';
 import { keccak256, toHex } from 'viem';
@@ -17,6 +18,7 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
   const [review, setReview] = useState('');
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [rating, setRating] = useState(5);
+  const { checkBalance } = useGasCheck();
   
   const bookId = BigInt(params.id);
   const book = getBookById(bookId);
@@ -34,6 +36,9 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
 
   const handleSubmitReview = async () => {
     if (!review.trim() || !address) return;
+    
+    // Check balance before transaction
+    if (!checkBalance()) return;
     
     // Hash the review content
     const reviewHash = keccak256(toHex(review));
@@ -77,6 +82,9 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleBurnForRare = async () => {
+    // Check balance before transaction
+    if (!checkBalance()) return;
+    
     try {
       await writeBurn({
         address: CONTRACT_ADDRESS,

@@ -3,6 +3,7 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { useReviews } from '@/hooks/useReviews';
+import { ReviewSkeleton } from '@/components/Skeletons';
 import { getBookById } from '@/types/book';
 
 function formatAddress(address: string) {
@@ -63,9 +64,10 @@ export default function ReviewsPage() {
         </div>
 
         {isLoading && (
-          <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-            <p className="mt-4 text-gray-600">Loading reviews...</p>
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <ReviewSkeleton key={i} />
+            ))}
           </div>
         )}
 
@@ -101,10 +103,13 @@ export default function ReviewsPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-medium text-gray-900">
+                      <div>
+                          <Link 
+                            href={`/profile/${review.userAddress}`}
+                            className="font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                          >
                             {formatAddress(review.userAddress)}
-                          </p>
+                          </Link>
                           <p className="text-sm text-gray-500">
                             {formatDate(review.timestamp)}
                           </p>

@@ -5,15 +5,18 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
-import { fetchBorrowRequests, updateBorrowRequest, type BorrowRequest } from '@/lib/api';
+import { fetchBorrowRequests, updateBorrowRequest, fetchBooks, type BorrowRequest, type Book } from '@/lib/api';
 import { toast } from 'sonner';
 import { handleTransactionError } from '@/lib/errors';
+import { parseEther, formatEther } from 'viem';
 
 export default function AdminPage() {
   const { address } = useAccount();
   const [requests, setRequests] = useState<BorrowRequest[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const [priceInputs, setPriceInputs] = useState<{[key: number]: string}>({});
 
   // Check if current user is the owner
   const { data: contractOwner } = useReadContract({
@@ -44,9 +47,40 @@ export default function AdminPage() {
     }
   };
 
+  const loadBooks = async () => {
+    try {
+      const data = await fetchBooks();
+      setBooks(data);
+    } catch (error) {
+      console.error('Failed to load books:', error);
+    }
+  };
+
   useEffect(() => {
     loadRequests();
+    loadBooks();
   }, []);
+
+  const handleSetPrice = async (bookId: number) => {
+    if (!address || !isOwner) return;
+    const priceInput = priceInputs[bookId];
+    if (!priceInput) return;
+
+    try {
+      const priceInWei = parseEther(priceInput);
+      
+      await writeContract({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'setBookPrice',
+        args: [BigInt(bookId), priceInWei],
+      });
+
+      toast.loading('Setting book price...');
+    } catch (error) {
+      handleTransactionError(error);
+    }
+  };
 
   const handleApprove = async (request: BorrowRequest) => {
     if (!address || !isOwner) return;
@@ -85,21 +119,27 @@ export default function AdminPage() {
   // Update backend when transaction confirms
   useEffect(() => {
     const updateBackend = async () => {
-      if (!isSuccess || !processingRequestId || !hash) return;
+      if (!isSuccess || !hash) return;
 
-      try {
-        await updateBorrowRequest(processingRequestId, {
-          status: 'approved',
-          txHash: hash,
-        });
-        
-        toast.success('Book lent successfully!');
-        loadRequests();
-      } catch (error) {
-        console.error('Failed to update backend:', error);
-        toast.error('Transaction succeeded but failed to update status');
-      } finally {
-        setProcessingRequestId(null);
+      // If we're processing a borrow request
+      if (processingRequestId) {
+        try {
+          await updateBorrowRequest(processingRequestId, {
+            status: 'approved',
+            txHash: hash,
+          });
+          
+          toast.success('Book lent successfully!');
+          loadRequests();
+        } catch (error) {
+          console.error('Failed to update backend:', error);
+          toast.error('Transaction succeeded but failed to update status');
+        } finally {
+          setProcessingRequestId(null);
+        }
+      } else {
+        // Price was set successfully
+        toast.success('Book price set successfully!');
       }
     };
 
@@ -172,6 +212,45 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Book Price Management */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">💰 Manage Book Prices</h2>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <p className="text-sm text-gray-600 mb-4">
+              Set prices for books so users can purchase them. Default: 0.001 ETH for Book #1.
+            </p>
+            <div className="space-y-4">
+              {books.map((book) => (
+                <div key={book.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900">{book.title}</h3>
+                    <p className="text-sm text-gray-600">Book #{book.id}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      placeholder="0.001"
+                      value={priceInputs[book.id] || ''}
+                      onChange={(e) => setPriceInputs({...priceInputs, [book.id]: e.target.value})}
+                      className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-600">ETH</span>
+                    <button
+                      onClick={() => handleSetPrice(book.id)}
+                      disabled={isPending || isConfirming || !priceInputs[book.id]}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                    >
+                      Set Price
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Pending Requests */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">

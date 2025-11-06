@@ -3,12 +3,15 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { BookCard } from '@/components/BookCard';
+import { BookCardSkeleton } from '@/components/Skeletons';
 import { useEffect, useState } from 'react';
 import { fetchBooks, type Book } from '@/lib/api';
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState<string>('all');
 
   useEffect(() => {
     const loadBooks = async () => {
@@ -23,6 +26,20 @@ export default function Home() {
     };
     loadBooks();
   }, []);
+
+  // Get unique genres from books
+  const genres = ['all', ...new Set(books.map(book => book.genre))];
+
+  // Filter books based on search and genre
+  const filteredBooks = books.filter(book => {
+    const matchesSearch = searchQuery === '' || 
+      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesGenre = selectedGenre === 'all' || book.genre === selectedGenre;
+    
+    return matchesSearch && matchesGenre;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -66,24 +83,67 @@ export default function Home() {
           <p className="text-gray-600">Browse and borrow books from the Blackhorn Reader collection</p>
         </div>
 
+        {/* Search and Filter */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Search by title or author..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="sm:w-48">
+            <select
+              value={selectedGenre}
+              onChange={(e) => setSelectedGenre(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {genres.map((genre) => (
+                <option key={genre} value={genre}>
+                  {genre === 'all' ? 'All Genres' : genre}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {/* Book Grid */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-            <p className="mt-4 text-gray-600">Loading books...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <BookCardSkeleton key={i} />
+            ))}
           </div>
-        ) : books.length === 0 ? (
+        ) : filteredBooks.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg">
-            <p className="text-gray-600">No books available at the moment.</p>
+            <p className="text-gray-600">
+              {searchQuery || selectedGenre !== 'all' 
+                ? 'No books match your search criteria.'
+                : 'No books available at the moment.'}
+            </p>
+            {(searchQuery || selectedGenre !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedGenre('all');
+                }}
+                className="mt-4 text-blue-600 hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {books.map((book) => (
+            {filteredBooks.map((book) => (
               <BookCard
                 key={book.id.toString()}
                 bookId={BigInt(book.id)}
                 title={book.title}
                 description={book.description}
+                coverImage={book.coverImage}
               />
             ))}
           </div>

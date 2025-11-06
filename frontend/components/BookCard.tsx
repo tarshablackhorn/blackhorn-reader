@@ -3,6 +3,7 @@
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract';
 import { useBookData } from '@/hooks/useBookData';
+import { useGasCheck } from '@/hooks/useGasCheck';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -13,12 +14,14 @@ interface BookCardProps {
   bookId: bigint;
   title: string;
   description: string;
+  coverImage?: string | null;
 }
 
-export function BookCard({ bookId, title, description }: BookCardProps) {
+export function BookCard({ bookId, title, description, coverImage }: BookCardProps) {
   const { address, isConnected } = useAccount();
   const { ownsBook, isBorrowed, borrowedUntil } = useBookData(bookId);
   const { writeContract, data: hash, isPending } = useWriteContract();
+  const { checkBalance } = useGasCheck();
   const [borrowDuration, setBorrowDuration] = useState<number>(7); // days
   const [isPurchasing, setIsPurchasing] = useState(false);
 
@@ -37,6 +40,9 @@ export function BookCard({ bookId, title, description }: BookCardProps) {
   const handleBorrow = async () => {
     if (!address || !ownsBook) return;
     
+    // Check balance before transaction
+    if (!checkBalance()) return;
+    
     const durationSeconds = BigInt(borrowDuration * 24 * 60 * 60);
     
     try {
@@ -54,6 +60,9 @@ export function BookCard({ bookId, title, description }: BookCardProps) {
 
   const handlePurchase = async () => {
     if (!address || !bookPrice) return;
+    
+    // Check balance before transaction
+    if (!checkBalance()) return;
     
     setIsPurchasing(true);
     
@@ -85,8 +94,12 @@ export function BookCard({ bookId, title, description }: BookCardProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-        <span className="text-6xl">📖</span>
+      <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden">
+        {coverImage ? (
+          <img src={coverImage} alt={title} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-6xl">📖</span>
+        )}
       </div>
       <div className="p-6">
         <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
