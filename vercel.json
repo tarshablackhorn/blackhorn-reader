@@ -1,7 +1,9 @@
 {
-  "buildCommand": "cd frontend && pnpm install && pnpm build",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd frontend && pnpm build",
   "outputDirectory": "frontend/.next",
   "framework": "nextjs",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --filter=frontend...",
+  "devCommand": "cd frontend && pnpm dev",
   "regions": ["iad1"]
 }
