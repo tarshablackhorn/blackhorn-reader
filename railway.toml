@@ -1,8 +1,0 @@
-[build]
-builder = "NIXPACKS"
-buildCommand = "cd backend && pnpm install && pnpm prisma generate && pnpm build"
-
-[deploy]
-startCommand = "cd backend && pnpm start"
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10
